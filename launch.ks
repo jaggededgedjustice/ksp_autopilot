@@ -1,7 +1,7 @@
 parameter apo.
 
 function ascent_pitch {
-    local asc_stage is (ship:altitude / 45000) * 90.
+    local asc_stage is (ship:obt:apoapsis / (apo * 0.75)) * 90.
     return max(0, 90 - asc_stage).
 }
 
