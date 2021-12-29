@@ -1,5 +1,16 @@
 parameter apo.
 
+function vis_viva {
+    parameter my_apoaps.
+    parameter my_periaps.
+    parameter my_body.
+
+    SET semi to ((my_apoaps + my_periaps) / 2) + my_body:radius.
+
+    SET square to my_body:MU * ((2/(my_apoaps+my_body:radius)) - (1/semi)).
+    return SQRT(square).
+}
+
 function ascent_pitch {
     local asc_stage is (ship:obt:apoapsis / (apo * 0.75)) * 90.
     return max(0, 90 - asc_stage).
@@ -20,29 +31,30 @@ until ship:obt:apoapsis > apo {
     wait 0.01.
     clearscreen.
     print "setting pitch to " + ascent_pitch().
-    print "thrust record " + thrust_record.
-    print "max thrust " + ship:Maxthrust.
 }
 
 lock throttle to 0.
 
-until ETA:APOAPSIS < 30 {
-    clearscreen.
-    print "time to apoapsis " + ETA:Apoapsis.
-    wait 0.01.
-}
+wait until ship:altitude >70000. //wait until we are out of the atmosphere and our apoapsis is not dropping
 
-lock throttle to 1.
-
-until (apo - ship:obt:periapsis) < 1000 {
-    if ship:MAXTHRUST < thrust_record {
-        stage.
-        set thrust_record to ship:MAXTHRUST.
+LIST PARTS in my_parts.
+for my_part in my_parts {
+    if my_part:hasmodule("ModuleDeployableAntenna") {
+        set m to my_part:getmodule("ModuleDeployableAntenna").
+        if m:hasevent("extent antenna") {
+            m:doevent("extend antenna").
+        }
     }
-    wait 0.01.
-    clearscreen.
-    print "height to raise " + (apo - ship:obt:periapsis).
+    if my_part:hasmodule("ModuleDeployableSolarPanel") {
+        set m to my_part:getmodule("ModuleDeployableSolarPanel").
+        if m:hasevent("extend solar panel") {
+            m:doevent("extend solar panel").
+        }
+    }
 }
 
-lock throttle to 0.
-print "Done!".
+SET vc to vis_viva(ship:obt:apoapsis, ship:obt:periapsis, ship:body).
+SET vt to vis_viva(ship:obt:apoapsis, ship:obt:apoapsis, ship:body).
+
+ADD NODE(eta:apoapsis + TIME:SECONDS, 0, 0, vt-vc). 
+run run_node.
